@@ -943,7 +943,8 @@
                 }
             }
             
-            remainingCards = nextPossibleCards;
+            // Remove the guessed card from possible answers if present
+            remainingCards = nextPossibleCards.filter(card => card.name !== currentGuess.name);
         }
 
         function updateDisplay() {
