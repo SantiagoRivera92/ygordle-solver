@@ -445,24 +445,24 @@
         }
 
         class FullComparisonResult {
-            constructor(attribute, level, type, cardTypes, atk, defVal, releaseDate) {
+            constructor(attribute, level, type, cardTypes, atk, def, releaseDate) {
                 this.attribute = attribute;
                 this.level = level;
                 this.type = type;
                 this.cardTypes = cardTypes;
                 this.atk = atk;
-                this.defVal = defVal;
+                this.def = def;
                 this.releaseDate = releaseDate;
             }
 
             equals(other) {
                 return this.attribute.equals(other.attribute) &&
-                       this.level.equals(other.level) &&
-                       this.type.equals(other.type) &&
-                       this.cardTypes.equals(other.cardTypes) &&
-                       this.atk.equals(other.atk) &&
-                       this.defVal.equals(other.defVal) &&
-                       this.releaseDate.equals(other.releaseDate);
+                    this.level.equals(other.level) &&
+                    this.type.equals(other.type) &&
+                    this.cardTypes.equals(other.cardTypes) &&
+                    this.atk.equals(other.atk) &&
+                    this.def.equals(other.def) &&
+                    this.releaseDate.equals(other.releaseDate);
             }
         }
 
@@ -470,11 +470,11 @@
         class Card {
             constructor(data) {
                 this._id = data._id;
-                this.name = data.name.en;
+                this.name = data.name;
                 this.attribute = data.attribute;
                 this.level = data.level;
                 this.atk = data.atk;
-                this.defVal = data.def || 0;
+                this.def = data.def || 0;
 
                 const typelineParts = data.typeline.split('/').map(p => p.trim());
                 this.type = typelineParts[0];
@@ -504,9 +504,9 @@
                     (this.atk < hiddenCard.atk ? "up" : "down") : null;
                 const atkResult = new CardComparisonResult(atkStatus, atkArrow);
 
-                const defStatus = this.defVal === hiddenCard.defVal ? "green" : "red";
+                const defStatus = this.def === hiddenCard.def ? "green" : "red";
                 const defArrow = defStatus === "red" ? 
-                    (this.defVal < hiddenCard.defVal ? "up" : "down") : null;
+                    (this.def < hiddenCard.def ? "up" : "down") : null;
                 const defResult = new CardComparisonResult(defStatus, defArrow);
 
                 const releaseStatus = this.releaseDate.getFullYear() === hiddenCard.releaseDate.getFullYear() ? "green" : "red";
@@ -521,17 +521,13 @@
             }
         }
 
-        // Initialize the application
         async function initializeApp() {
             showLoading(true);
             try {
-                // Load cards from JSON file (you'll need to create this)
                 const response = await fetch('cards.json');
                 const cardData = await response.json();
                 
-                // Filter monster cards and create Card objects
-                allCards = cardData
-                    .map(card => new Card(card));
+                allCards = cardData.map(card => new Card(card));
                 
                 remainingCards = [...allCards];
                 
@@ -586,10 +582,12 @@
                 currentGuess = null;
                 return;
             }
+            console.log(query)
 
             const matches = allCards.filter(card => 
-                card.name.toLowerCase().includes(query)
+                typeof card.name === 'string' && card.name.toLowerCase().includes(query)
             ).slice(0, 10);
+            console.log(matches)
 
             if (matches.length === 0) {
                 suggestions.style.display = 'none';
@@ -647,7 +645,7 @@
                 { name: 'Level', key: 'level', hasArrow: true, value: currentGuess.level },
                 { name: 'Type', key: 'type', hasArrow: false, value: currentGuess.type },
                 { name: 'ATK', key: 'atk', hasArrow: true, value: currentGuess.atk },
-                { name: 'DEF', key: 'def', hasArrow: true, value: currentGuess.defVal },
+                { name: 'DEF', key: 'def', hasArrow: true, value: currentGuess.def },
                 { name: 'Release Date', key: 'release', hasArrow: true, value: currentGuess.releaseDate.getFullYear() }
             ];
 
@@ -723,30 +721,66 @@
         }
 
         function setFeedback(attribute, value) {
-            // Remove previous selections for this attribute
-            const buttons = document.querySelectorAll(`[data-attr="${attribute}"]`);
-            buttons.forEach(btn => {
-                btn.classList.remove('green', 'red');
-                if (btn.classList.contains('arrow-up') || btn.classList.contains('arrow-down')) {
-                    btn.style.display = 'none';
-                }
-            });
+            // 1. Handle Green/Red buttons (mutually exclusive)
+            const greenBtn = document.querySelector(`[data-attr="${attribute}"][data-value="green"]`);
+            const redBtn = document.querySelector(`[data-attr="${attribute}"][data-value="red"]`);
 
-            // Set new selection
-            const selectedBtn = document.querySelector(`[data-attr="${attribute}"][data-value="${value}"]`);
-            if (selectedBtn) {
-                if (value === 'green') {
-                    selectedBtn.classList.add('green');
-                } else if (value === 'red') {
-                    selectedBtn.classList.add('red');
-                    // Show arrow buttons for red status
-                    const upBtn = document.querySelector(`[data-attr="${attribute}"][data-value="up"]`);
-                    const downBtn = document.querySelector(`[data-attr="${attribute}"][data-value="down"]`);
-                    if (upBtn) upBtn.style.display = 'inline-block';
-                    if (downBtn) downBtn.style.display = 'inline-block';
-                } else if (value === 'up' || value === 'down') {
-                    selectedBtn.classList.add('red');
+            // 2. Handle Arrow buttons (mutually exclusive among themselves, visible only if red is selected)
+            const upBtn = document.querySelector(`[data-attr="${attribute}"][data-value="up"]`);
+            const downBtn = document.querySelector(`[data-attr="${attribute}"][data-value="down"]`);
+
+            // --- Step A: Reset states based on the 'value' being set ---
+
+            if (value === 'green') {
+                // If green is clicked:
+                // - Green gets 'green' class
+                // - Red loses 'red' class
+                // - Arrows are hidden and lose any color
+                greenBtn.classList.add('green');
+                redBtn.classList.remove('red');
+                if (upBtn) { upBtn.classList.remove('red'); upBtn.style.display = 'none'; }
+                if (downBtn) { downBtn.classList.remove('red'); downBtn.style.display = 'none'; }
+
+            } else if (value === 'red') {
+                // If red is clicked:
+                // - Red gets 'red' class
+                // - Green loses 'green' class
+                // - Arrows are displayed (but unselected/no color initially from this click)
+                redBtn.classList.add('red');
+                greenBtn.classList.remove('green');
+                if (upBtn) { upBtn.classList.remove('red'); upBtn.style.display = 'inline-block'; }
+                if (downBtn) { downBtn.classList.remove('red'); downBtn.style.display = 'inline-block'; }
+
+            } else if (value === 'up' || value === 'down') {
+                // If up/down is clicked:
+                // - The *clicked* arrow gets 'red' class
+                // - The *other* arrow loses 'red' class
+                // - Green/Red buttons are NOT affected (they should retain their current state)
+
+                // Ensure the main red button is still selected if an arrow is clicked
+                // This implicitly handles the case where the arrows are clicked.
+                // It should *already* be red for the arrows to be visible.
+                if (redBtn && !redBtn.classList.contains('red')) {
+                    // This is a safety check. If for some reason an arrow is clicked
+                    // but the red button isn't active, we might want to activate it.
+                    // Based on your rules, the arrows only show if red is selected,
+                    // so this block might not strictly be necessary but serves as a safeguard.
+                    redBtn.classList.add('red');
+                    greenBtn.classList.remove('green');
                 }
+
+                if (value === 'up') {
+                    if (upBtn) upBtn.classList.add('red');
+                    if (downBtn) downBtn.classList.remove('red');
+                } else { // value === 'down'
+                    if (downBtn) downBtn.classList.add('red');
+                    if (upBtn) upBtn.classList.remove('red');
+                }
+
+                // Make sure arrows are displayed, in case they were hidden by some prior state
+                // (though they should be if red is active)
+                if (upBtn) upBtn.style.display = 'inline-block';
+                if (downBtn) downBtn.style.display = 'inline-block';
             }
         }
 
@@ -782,8 +816,8 @@
                     feedback[attr] = new CardComparisonResult('green');
                     // Store as known green attribute
                     const displayName = attr === 'def' ? 'DEF' : 
-                                      attr === 'release' ? 'Release Date' :
-                                      attr.charAt(0).toUpperCase() + attr.slice(1);
+                                    attr === 'release' ? 'Release Date' :
+                                    attr.charAt(0).toUpperCase() + attr.slice(1);
                     knownGreenAttributes[displayName] = new CardComparisonResult('green');
                 } else if (redBtn && redBtn.classList.contains('red')) {
                     let arrow = null;
@@ -812,7 +846,6 @@
             
             for (const candidateCard of remainingCards) {
                 const comparisonResult = currentGuess.compareTo(candidateCard);
-                
                 // Check compatibility for all attributes
                 let overallMatch = true;
                 
@@ -889,7 +922,7 @@
                         <div class="card-details">
                             Lvl: ${card.level} | Attr: ${card.attribute} | Type: ${card.type} | 
                             CT: ${card.cardTypes.length > 0 ? card.cardTypes.join(', ') : 'None'} | 
-                            ATK: ${card.atk} | DEF: ${card.defVal} | Year: ${card.releaseDate.getFullYear()}
+                            ATK: ${card.atk} | DEF: ${card.def} | Year: ${card.releaseDate.getFullYear()}
                         </div>
                     </div>
                 `).join('');
@@ -920,7 +953,7 @@
                     if (knownGreenAttributes['Level']) currentKnownValues.level = sampleCard.level;
                     if (knownGreenAttributes['Type']) currentKnownValues.type = sampleCard.type;
                     if (knownGreenAttributes['ATK']) currentKnownValues.atk = sampleCard.atk;
-                    if (knownGreenAttributes['DEF']) currentKnownValues.defVal = sampleCard.defVal;
+                    if (knownGreenAttributes['DEF']) currentKnownValues.def = sampleCard.def;
                     if (knownGreenAttributes['Release Date']) currentKnownValues.releaseDate = sampleCard.releaseDate.getFullYear();
                 }
 
@@ -940,7 +973,7 @@
                     if (knownGreenAttributes['ATK'] && guessCard.atk !== currentKnownValues.atk) {
                         isGuessConsistent = false;
                     }
-                    if (knownGreenAttributes['DEF'] && guessCard.defVal !== currentKnownValues.defVal) {
+                    if (knownGreenAttributes['DEF'] && guessCard.def !== currentKnownValues.def) {
                         isGuessConsistent = false;
                     }
                     if (knownGreenAttributes['Release Date'] && guessCard.releaseDate.getFullYear() !== currentKnownValues.releaseDate) {
@@ -969,11 +1002,11 @@
                     for (const hiddenCard of remainingCards) {
                         const feedback = guessCard.compareTo(hiddenCard);
                         const feedbackKey = `${feedback.attribute.status}-${feedback.attribute.arrow || 'null'}-` +
-                                          `${feedback.level.status}-${feedback.level.arrow || 'null'}-` +
-                                          `${feedback.type.status}-${feedback.type.arrow || 'null'}-` +
-                                          `${feedback.atk.status}-${feedback.atk.arrow || 'null'}-` +
-                                          `${feedback.defVal.status}-${feedback.defVal.arrow || 'null'}-` +
-                                          `${feedback.releaseDate.status}-${feedback.releaseDate.arrow || 'null'}`;
+                                        `${feedback.level.status}-${feedback.level.arrow || 'null'}-` +
+                                        `${feedback.type.status}-${feedback.type.arrow || 'null'}-` +
+                                        `${feedback.atk.status}-${feedback.atk.arrow || 'null'}-` +
+                                        `${feedback.def.status}-${feedback.def.arrow || 'null'}-` +
+                                        `${feedback.releaseDate.status}-${feedback.releaseDate.arrow || 'null'}`;
                         
                         feedbackGroups.set(feedbackKey, (feedbackGroups.get(feedbackKey) || 0) + 1);
                     }
