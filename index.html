@@ -480,8 +480,8 @@
                 this.name = data.name;
                 this.attribute = data.attribute;
                 this.level = data.level;
-                this.atk = data.atk;
-                this.def = data.def || 0;
+                this.atk = (data.atk === -1 ? 0 : data.atk);
+                this.def = (data.def === undefined || data.def === -1 ? 0 : data.def);
 
                 const typelineParts = data.typeline.split('/').map(p => p.trim());
                 this.type = typelineParts[0];
