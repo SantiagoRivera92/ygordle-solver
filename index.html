@@ -242,6 +242,13 @@
             border-color: #dc3545;
         }
 
+        .feedback-btn.orange {
+            background: #ffc107;
+            color: #333;
+            border-color: #ffc107;
+        }
+
+
         .feedback-btn.arrow-up, .feedback-btn.arrow-down {
             font-weight: bold;
         }
@@ -693,25 +700,51 @@
                 
                 cardTypesContainer.innerHTML = currentGuess.cardTypes.map(cardType => {
                     const known = knownIndividualCardTypes[cardType];
-                    return `
-                        <div class="type-item">
-                            <span><strong>${cardType}</strong></span>
-                            <div class="feedback-options">
-                                <button class="feedback-btn ${known === 'g' ? 'green' : ''}" 
-                                        onclick="setCardTypeFeedback('${cardType}', 'g')">
-                                    Yes
-                                </button>
-                                <button class="feedback-btn ${known === 'r' ? 'red' : ''}" 
-                                        onclick="setCardTypeFeedback('${cardType}', 'r')">
-                                    No
-                                </button>
-                                <button class="feedback-btn" 
-                                        onclick="setCardTypeFeedback('${cardType}', 'skip')">
-                                    Skip
-                                </button>
+                    if (currentGuess.cardTypes.length === 1) {
+                        return `
+                            <div class="type-item">
+                                <span><strong>${cardType}</strong></span>
+                                <div class="feedback-options">
+                                    <button class="feedback-btn ${known === 'g' ? 'green' : ''}"
+                                            onclick="setCardTypeFeedback('${cardType}', 'g', true)">
+                                        Yes (green)
+                                    </button>
+                                    <button class="feedback-btn ${known === 'o' ? 'orange' : ''}"
+                                            onclick="setCardTypeFeedback('${cardType}', 'o', true)">
+                                        Yes (orange)
+                                    </button>
+                                    <button class="feedback-btn ${known === 'r' ? 'red' : ''}"
+                                            onclick="setCardTypeFeedback('${cardType}', 'r', true)">
+                                        No
+                                    </button>
+                                    <button class="feedback-btn"
+                                            onclick="setCardTypeFeedback('${cardType}', 'skip', true)">
+                                        Skip
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        return `
+                            <div class="type-item">
+                                <span><strong>${cardType}</strong></span>
+                                <div class="feedback-options">
+                                    <button class="feedback-btn ${known === 'g' ? 'green' : ''}"
+                                            onclick="setCardTypeFeedback('${cardType}', 'g', false)">
+                                        Yes
+                                    </button>
+                                    <button class="feedback-btn ${known === 'r' ? 'red' : ''}"
+                                            onclick="setCardTypeFeedback('${cardType}', 'r', false)">
+                                        No
+                                    </button>
+                                    <button class="feedback-btn"
+                                            onclick="setCardTypeFeedback('${cardType}', 'skip', false)">
+                                        Skip
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
                 }).join('');
                 
                 cardTypesFeedback.style.display = 'block';
@@ -784,15 +817,22 @@
             }
         }
 
-        function setCardTypeFeedback(cardType, status) {
+        function setCardTypeFeedback(cardType, status, isExclusive) {
             // Remove previous selections for this card type
             const buttons = document.querySelectorAll(`[onclick*="${cardType}"]`);
-            buttons.forEach(btn => btn.classList.remove('green', 'red'));
+            buttons.forEach(btn => btn.classList.remove('green', 'red', 'orange', 'selected'));
 
-            // Set new selection
             if (status === 'g') {
                 event.target.classList.add('green');
                 knownIndividualCardTypes[cardType] = 'g';
+                if (isExclusive) {
+                    for (const type of Object.keys(knownIndividualCardTypes)) {
+                        if (type !== cardType) knownIndividualCardTypes[type] = 'r';
+                    }
+                }
+            } else if (status === 'o') {
+                event.target.classList.add('orange', 'selected');
+                knownIndividualCardTypes[cardType] = 'o';
             } else if (status === 'r') {
                 event.target.classList.add('red');
                 knownIndividualCardTypes[cardType] = 'r';
@@ -871,11 +911,27 @@
                 // Apply individual card type constraints
                 if (overallMatch) {
                     for (const [specificType, status] of Object.entries(knownIndividualCardTypes)) {
-                        if (status === 'g' && !candidateCard.cardTypes.includes(specificType)) {
+                        if ((status === 'g' || status === 'o') && !candidateCard.cardTypes.includes(specificType)) {
                             overallMatch = false;
                             break;
                         }
                         if (status === 'r' && candidateCard.cardTypes.includes(specificType)) {
+                            overallMatch = false;
+                            break;
+                        }
+                    }
+                    // If any type is 'g', all other types must not be present, but only if the candidate card has exactly 1 type
+                    if (Object.values(knownIndividualCardTypes).includes('g') && candidateCard.cardTypes.length === 1) {
+                        for (const type of candidateCard.cardTypes) {
+                            if (knownIndividualCardTypes[type] !== 'g') {
+                                overallMatch = false;
+                                break;
+                            }
+                        }
+                    }
+                    // If any type is 'o', discard cards that have only that type (length 1)
+                    for (const [specificType, status] of Object.entries(knownIndividualCardTypes)) {
+                        if (status === 'o' && candidateCard.cardTypes.length === 1 && candidateCard.cardTypes[0] === specificType) {
                             overallMatch = false;
                             break;
                         }
