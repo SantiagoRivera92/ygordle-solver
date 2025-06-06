@@ -531,7 +531,6 @@
                 
                 // Filter monster cards and create Card objects
                 allCards = cardData
-                    .filter(card => card.card_type === 'Monster' && card.tcg_release)
                     .map(card => new Card(card));
                 
                 remainingCards = [...allCards];
