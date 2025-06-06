@@ -518,6 +518,7 @@
             </div>
 
             <button class="btn" id="submitGuess" disabled>Submit Guess & Enter Feedback</button>
+            <button class="btn" id="restartGame" style="margin-left:10px;background:#dc3545;">Restart Game</button>
 
             <div class="suggestion-box" id="suggestionBox" style="display: none;">
                 <h3>💡 Suggested Next Guess</h3>
@@ -709,6 +710,24 @@
                 if (e.target.id === 'feedbackModal') {
                     closeFeedbackModal();
                 }
+            });
+
+            // Add restart game logic
+            document.getElementById('restartGame').addEventListener('click', () => {
+                // Reset all state
+                remainingCards = [...allCards];
+                knownGreenAttributes = {};
+                knownIndividualCardTypes = {};
+                currentGuess = null;
+                turn = 1;
+                pastGuesses = [];
+                document.getElementById('cardSearch').value = '';
+                document.getElementById('submitGuess').disabled = true;
+                document.getElementById('suggestions').style.display = 'none';
+                updateStatus('Ready to start! Enter your first guessed card below.');
+                renderPastGuesses();
+                suggestInitialGuess();
+                displayRemainingCards();
             });
         }
 
@@ -1371,6 +1390,22 @@
                 suggestInitialGuess();
             }
             renderPastGuesses();
+            document.getElementById('restartGame').addEventListener('click', () => {
+                // Reset all state
+                remainingCards = [...allCards];
+                knownGreenAttributes = {};
+                knownIndividualCardTypes = {};
+                currentGuess = null;
+                turn = 1;
+                pastGuesses = [];
+                document.getElementById('cardSearch').value = '';
+                document.getElementById('submitGuess').disabled = true;
+                document.getElementById('suggestions').style.display = 'none';
+                updateStatus('Ready to start! Enter your first guessed card below.');
+                renderPastGuesses();
+                suggestInitialGuess();
+                displayRemainingCards();
+            });
         });
 
         // Make functions globally available for onclick handlers
