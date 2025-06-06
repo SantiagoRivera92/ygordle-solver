@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ygordle Solver</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .card-search {
+            position: relative;
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .suggestion-item:hover {
+            background: #f8f9fa;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .modal-header h2 {
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .feedback-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .feedback-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        .feedback-item.selected {
+            border-color: #007bff;
+        }
+
+        .feedback-label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .feedback-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .feedback-btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .feedback-btn.green {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .feedback-btn.red {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .feedback-btn.arrow-up, .feedback-btn.arrow-down {
+            font-weight: bold;
+        }
+
+        .remaining-cards {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .remaining-cards h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .card-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 10px;
+        }
+
+        .card-item {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card-name {
+            font-weight: 600;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+
+        .card-details {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .suggestion-box {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .suggestion-box h3 {
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .card-types-feedback {
+            margin-top: 15px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .type-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .type-item:last-child {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .main-panel {
+                padding: 20px;
+            }
+            
+            .modal-content {
+                margin: 10% auto;
+                padding: 20px;
+            }
+            
+            .feedback-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🃏 Ygordle Solver</h1>
+            <p>Enter your guessed cards and their feedback to solve the puzzle!</p>
+        </div>
+
+        <div class="main-panel">
+            <div class="status" id="status">
+                <strong>Ready to start!</strong> Enter your first guessed card below.
+            </div>
+
+            <div class="input-group">
+                <label for="cardSearch">Enter the card you guessed:</label>
+                <div class="card-search">
+                    <input type="text" id="cardSearch" placeholder="Start typing card name..." autocomplete="off">
+                    <div class="suggestions" id="suggestions"></div>
+                </div>
+            </div>
+
+            <button class="btn" id="submitGuess" disabled>Submit Guess & Enter Feedback</button>
+
+            <div class="suggestion-box" id="suggestionBox" style="display: none;">
+                <h3>💡 Suggested Next Guess</h3>
+                <p id="suggestionText"></p>
+            </div>
+
+            <div class="remaining-cards" id="remainingCards" style="display: none;">
+                <h3>Remaining Possible Cards: <span id="remainingCount">0</span></h3>
+                <div class="card-list" id="cardList"></div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Loading card database...</p>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Enter Feedback for: <span id="guessedCardName"></span></h2>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+            
+            <div class="feedback-grid" id="feedbackGrid">
+                <!-- Feedback items will be generated here -->
+            </div>
+
+            <div class="card-types-feedback" id="cardTypesFeedback" style="display: none;">
+                <h4>Individual Card Types</h4>
+                <p>Please specify which individual card types are present in the hidden card:</p>
+                <div id="cardTypesContainer"></div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" id="submitFeedback">Apply Feedback</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allCards = [];
+        let remainingCards = [];
+        let knownGreenAttributes = {};
+        let knownIndividualCardTypes = {};
+        let currentGuess = null;
+        let turn = 1;
+
+        // Card comparison classes (JavaScript equivalents)
+        class CardComparisonResult {
+            constructor(status, arrow = null) {
+                this.status = status;
+                this.arrow = arrow;
+            }
+
+            equals(other) {
+                return this.status === other.status && this.arrow === other.arrow;
+            }
+        }
+
+        class FullComparisonResult {
+            constructor(attribute, level, type, cardTypes, atk, defVal, releaseDate) {
+                this.attribute = attribute;
+                this.level = level;
+                this.type = type;
+                this.cardTypes = cardTypes;
+                this.atk = atk;
+                this.defVal = defVal;
+                this.releaseDate = releaseDate;
+            }
+
+            equals(other) {
+                return this.attribute.equals(other.attribute) &&
+                       this.level.equals(other.level) &&
+                       this.type.equals(other.type) &&
+                       this.cardTypes.equals(other.cardTypes) &&
+                       this.atk.equals(other.atk) &&
+                       this.defVal.equals(other.defVal) &&
+                       this.releaseDate.equals(other.releaseDate);
+            }
+        }
+
+        // Card class
+        class Card {
+            constructor(data) {
+                this._id = data._id;
+                this.name = data.name.en;
+                this.attribute = data.attribute;
+                this.level = data.level;
+                this.atk = data.atk;
+                this.defVal = data.def || 0;
+
+                const typelineParts = data.typeline.split('/').map(p => p.trim());
+                this.type = typelineParts[0];
+                this.cardTypes = typelineParts.slice(1).filter(t => t !== 'Monster');
+
+                this.releaseDate = new Date(data.tcg_release);
+            }
+
+            compareTo(hiddenCard) {
+                const attrResult = new CardComparisonResult(
+                    this.attribute === hiddenCard.attribute ? "green" : "red"
+                );
+
+                const levelStatus = this.level === hiddenCard.level ? "green" : "red";
+                const levelArrow = levelStatus === "red" ? 
+                    (this.level < hiddenCard.level ? "up" : "down") : null;
+                const levelResult = new CardComparisonResult(levelStatus, levelArrow);
+
+                const typeResult = new CardComparisonResult(
+                    this.type === hiddenCard.type ? "green" : "red"
+                );
+
+                const cardTypesResult = new CardComparisonResult("green"); // Placeholder
+
+                const atkStatus = this.atk === hiddenCard.atk ? "green" : "red";
+                const atkArrow = atkStatus === "red" ? 
+                    (this.atk < hiddenCard.atk ? "up" : "down") : null;
+                const atkResult = new CardComparisonResult(atkStatus, atkArrow);
+
+                const defStatus = this.defVal === hiddenCard.defVal ? "green" : "red";
+                const defArrow = defStatus === "red" ? 
+                    (this.defVal < hiddenCard.defVal ? "up" : "down") : null;
+                const defResult = new CardComparisonResult(defStatus, defArrow);
+
+                const releaseStatus = this.releaseDate.getFullYear() === hiddenCard.releaseDate.getFullYear() ? "green" : "red";
+                const releaseArrow = releaseStatus === "red" ? 
+                    (this.releaseDate.getFullYear() < hiddenCard.releaseDate.getFullYear() ? "up" : "down") : null;
+                const releaseResult = new CardComparisonResult(releaseStatus, releaseArrow);
+
+                return new FullComparisonResult(
+                    attrResult, levelResult, typeResult, cardTypesResult,
+                    atkResult, defResult, releaseResult
+                );
+            }
+        }
+
+        // Initialize the application
+        async function initializeApp() {
+            showLoading(true);
+            try {
+                // Load cards from JSON file (you'll need to create this)
+                const response = await fetch('cards.json');
+                const cardData = await response.json();
+                
+                // Filter monster cards and create Card objects
+                allCards = cardData
+                    .filter(card => card.card_type === 'Monster' && card.tcg_release)
+                    .map(card => new Card(card));
+                
+                remainingCards = [...allCards];
+                
+                updateStatus(`Loaded ${allCards.length} monster cards. Ready to start!`);
+                setupEventListeners();
+            } catch (error) {
+                updateStatus('Error loading card database. Please ensure cards.json is available.');
+                console.error('Error loading cards:', error);
+            }
+            showLoading(false);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML = `<strong>${message}</strong>`;
+        }
+
+        function setupEventListeners() {
+            const cardSearch = document.getElementById('cardSearch');
+            const submitGuess = document.getElementById('submitGuess');
+            const suggestions = document.getElementById('suggestions');
+
+            cardSearch.addEventListener('input', handleCardSearch);
+            cardSearch.addEventListener('blur', () => {
+                setTimeout(() => suggestions.style.display = 'none', 200);
+            });
+            
+            submitGuess.addEventListener('click', openFeedbackModal);
+            
+            document.getElementById('closeModal').addEventListener('click', closeFeedbackModal);
+            document.getElementById('submitFeedback').addEventListener('click', processFeedback);
+            
+            // Modal click outside to close
+            document.getElementById('feedbackModal').addEventListener('click', (e) => {
+                if (e.target.id === 'feedbackModal') {
+                    closeFeedbackModal();
+                }
+            });
+        }
+
+        function handleCardSearch() {
+            const query = document.getElementById('cardSearch').value.toLowerCase();
+            const suggestions = document.getElementById('suggestions');
+            const submitBtn = document.getElementById('submitGuess');
+            
+            if (query.length < 2) {
+                suggestions.style.display = 'none';
+                submitBtn.disabled = true;
+                currentGuess = null;
+                return;
+            }
+
+            const matches = allCards.filter(card => 
+                card.name.toLowerCase().includes(query)
+            ).slice(0, 10);
+
+            if (matches.length === 0) {
+                suggestions.style.display = 'none';
+                submitBtn.disabled = true;
+                currentGuess = null;
+                return;
+            }
+
+            suggestions.innerHTML = matches.map(card => 
+                `<div class="suggestion-item" onclick="selectCard('${card.name}')">${card.name}</div>`
+            ).join('');
+            
+            suggestions.style.display = 'block';
+            
+            // Check if exact match exists
+            const exactMatch = matches.find(card => 
+                card.name.toLowerCase() === query
+            );
+            
+            if (exactMatch) {
+                currentGuess = exactMatch;
+                submitBtn.disabled = false;
+            } else {
+                currentGuess = null;
+                submitBtn.disabled = true;
+            }
+        }
+
+        function selectCard(cardName) {
+            document.getElementById('cardSearch').value = cardName;
+            document.getElementById('suggestions').style.display = 'none';
+            currentGuess = allCards.find(card => card.name === cardName);
+            document.getElementById('submitGuess').disabled = false;
+        }
+
+        function openFeedbackModal() {
+            if (!currentGuess) return;
+
+            document.getElementById('guessedCardName').textContent = currentGuess.name;
+            
+            // Create feedback form
+            createFeedbackForm();
+            
+            document.getElementById('feedbackModal').style.display = 'block';
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').style.display = 'none';
+        }
+
+        function createFeedbackForm() {
+            const feedbackGrid = document.getElementById('feedbackGrid');
+            const attributes = [
+                { name: 'Attribute', key: 'attribute', hasArrow: false, value: currentGuess.attribute },
+                { name: 'Level', key: 'level', hasArrow: true, value: currentGuess.level },
+                { name: 'Type', key: 'type', hasArrow: false, value: currentGuess.type },
+                { name: 'ATK', key: 'atk', hasArrow: true, value: currentGuess.atk },
+                { name: 'DEF', key: 'def', hasArrow: true, value: currentGuess.defVal },
+                { name: 'Release Date', key: 'release', hasArrow: true, value: currentGuess.releaseDate.getFullYear() }
+            ];
+
+            feedbackGrid.innerHTML = attributes.map(attr => {
+                const isKnownGreen = knownGreenAttributes[attr.name];
+                const disabled = isKnownGreen ? 'style="opacity: 0.6; pointer-events: none;"' : '';
+                
+                return `
+                    <div class="feedback-item" ${disabled}>
+                        <div class="feedback-label">${attr.name}: ${attr.value}</div>
+                        <div class="feedback-options">
+                            <button class="feedback-btn ${isKnownGreen ? 'green' : ''}" 
+                                    onclick="setFeedback('${attr.key}', 'green')" 
+                                    data-attr="${attr.key}" data-value="green">
+                                ✓ Green
+                            </button>
+                            <button class="feedback-btn" 
+                                    onclick="setFeedback('${attr.key}', 'red')" 
+                                    data-attr="${attr.key}" data-value="red">
+                                ✗ Red
+                            </button>
+                            ${attr.hasArrow ? `
+                                <button class="feedback-btn arrow-up" 
+                                        onclick="setFeedback('${attr.key}', 'up')" 
+                                        data-attr="${attr.key}" data-value="up" 
+                                        style="display: none;">
+                                    ↑ Higher
+                                </button>
+                                <button class="feedback-btn arrow-down" 
+                                        onclick="setFeedback('${attr.key}', 'down')" 
+                                        data-attr="${attr.key}" data-value="down" 
+                                        style="display: none;">
+                                    ↓ Lower
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Show card types feedback if applicable
+            if (currentGuess.cardTypes.length > 0) {
+                const cardTypesFeedback = document.getElementById('cardTypesFeedback');
+                const cardTypesContainer = document.getElementById('cardTypesContainer');
+                
+                cardTypesContainer.innerHTML = currentGuess.cardTypes.map(cardType => {
+                    const known = knownIndividualCardTypes[cardType];
+                    return `
+                        <div class="type-item">
+                            <span><strong>${cardType}</strong></span>
+                            <div class="feedback-options">
+                                <button class="feedback-btn ${known === 'g' ? 'green' : ''}" 
+                                        onclick="setCardTypeFeedback('${cardType}', 'g')">
+                                    Yes
+                                </button>
+                                <button class="feedback-btn ${known === 'r' ? 'red' : ''}" 
+                                        onclick="setCardTypeFeedback('${cardType}', 'r')">
+                                    No
+                                </button>
+                                <button class="feedback-btn" 
+                                        onclick="setCardTypeFeedback('${cardType}', 'skip')">
+                                    Skip
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                cardTypesFeedback.style.display = 'block';
+            } else {
+                document.getElementById('cardTypesFeedback').style.display = 'none';
+            }
+        }
+
+        function setFeedback(attribute, value) {
+            // Remove previous selections for this attribute
+            const buttons = document.querySelectorAll(`[data-attr="${attribute}"]`);
+            buttons.forEach(btn => {
+                btn.classList.remove('green', 'red');
+                if (btn.classList.contains('arrow-up') || btn.classList.contains('arrow-down')) {
+                    btn.style.display = 'none';
+                }
+            });
+
+            // Set new selection
+            const selectedBtn = document.querySelector(`[data-attr="${attribute}"][data-value="${value}"]`);
+            if (selectedBtn) {
+                if (value === 'green') {
+                    selectedBtn.classList.add('green');
+                } else if (value === 'red') {
+                    selectedBtn.classList.add('red');
+                    // Show arrow buttons for red status
+                    const upBtn = document.querySelector(`[data-attr="${attribute}"][data-value="up"]`);
+                    const downBtn = document.querySelector(`[data-attr="${attribute}"][data-value="down"]`);
+                    if (upBtn) upBtn.style.display = 'inline-block';
+                    if (downBtn) downBtn.style.display = 'inline-block';
+                } else if (value === 'up' || value === 'down') {
+                    selectedBtn.classList.add('red');
+                }
+            }
+        }
+
+        function setCardTypeFeedback(cardType, status) {
+            // Remove previous selections for this card type
+            const buttons = document.querySelectorAll(`[onclick*="${cardType}"]`);
+            buttons.forEach(btn => btn.classList.remove('green', 'red'));
+
+            // Set new selection
+            if (status === 'g') {
+                event.target.classList.add('green');
+                knownIndividualCardTypes[cardType] = 'g';
+            } else if (status === 'r') {
+                event.target.classList.add('red');
+                knownIndividualCardTypes[cardType] = 'r';
+            } else if (status === 'skip') {
+                delete knownIndividualCardTypes[cardType];
+            }
+        }
+
+        function processFeedback() {
+            // Collect feedback from form
+            const feedback = {};
+            const attributes = ['attribute', 'level', 'type', 'atk', 'def', 'release'];
+            
+            for (const attr of attributes) {
+                const greenBtn = document.querySelector(`[data-attr="${attr}"][data-value="green"]`);
+                const redBtn = document.querySelector(`[data-attr="${attr}"][data-value="red"]`);
+                const upBtn = document.querySelector(`[data-attr="${attr}"][data-value="up"]`);
+                const downBtn = document.querySelector(`[data-attr="${attr}"][data-value="down"]`);
+                
+                if (greenBtn && greenBtn.classList.contains('green')) {
+                    feedback[attr] = new CardComparisonResult('green');
+                    // Store as known green attribute
+                    const displayName = attr === 'def' ? 'DEF' : 
+                                      attr === 'release' ? 'Release Date' :
+                                      attr.charAt(0).toUpperCase() + attr.slice(1);
+                    knownGreenAttributes[displayName] = new CardComparisonResult('green');
+                } else if (redBtn && redBtn.classList.contains('red')) {
+                    let arrow = null;
+                    if (upBtn && upBtn.classList.contains('red')) arrow = 'up';
+                    else if (downBtn && downBtn.classList.contains('red')) arrow = 'down';
+                    feedback[attr] = new CardComparisonResult('red', arrow);
+                }
+            }
+
+            // Apply feedback and filter cards
+            filterRemainingCards(feedback);
+            
+            closeFeedbackModal();
+            
+            // Clear input and prepare for next guess
+            document.getElementById('cardSearch').value = '';
+            document.getElementById('submitGuess').disabled = true;
+            currentGuess = null;
+            
+            turn++;
+            updateDisplay();
+        }
+
+        function filterRemainingCards(userFeedback) {
+            const nextPossibleCards = [];
+            
+            for (const candidateCard of remainingCards) {
+                const comparisonResult = currentGuess.compareTo(candidateCard);
+                
+                // Check compatibility for all attributes
+                let overallMatch = true;
+                
+                if (userFeedback.attribute && !userFeedback.attribute.equals(comparisonResult.attribute)) {
+                    overallMatch = false;
+                }
+                if (userFeedback.level && !userFeedback.level.equals(comparisonResult.level)) {
+                    overallMatch = false;
+                }
+                if (userFeedback.type && !userFeedback.type.equals(comparisonResult.type)) {
+                    overallMatch = false;
+                }
+                if (userFeedback.atk && !userFeedback.atk.equals(comparisonResult.atk)) {
+                    overallMatch = false;
+                }
+                if (userFeedback.def && !userFeedback.def.equals(comparisonResult.def)) {
+                    overallMatch = false;
+                }
+                if (userFeedback.release && !userFeedback.release.equals(comparisonResult.releaseDate)) {
+                    overallMatch = false;
+                }
+                
+                // Apply individual card type constraints
+                if (overallMatch) {
+                    for (const [specificType, status] of Object.entries(knownIndividualCardTypes)) {
+                        if (status === 'g' && !candidateCard.cardTypes.includes(specificType)) {
+                            overallMatch = false;
+                            break;
+                        }
+                        if (status === 'r' && candidateCard.cardTypes.includes(specificType)) {
+                            overallMatch = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if (overallMatch) {
+                    nextPossibleCards.push(candidateCard);
+                }
+            }
+            
+            remainingCards = nextPossibleCards;
+        }
+
+        function updateDisplay() {
+            const remainingCount = remainingCards.length;
+            
+            if (remainingCount === 0) {
+                updateStatus('❌ No cards match the feedback. Please check your inputs.');
+                document.getElementById('remainingCards').style.display = 'none';
+                document.getElementById('suggestionBox').style.display = 'none';
+            } else if (remainingCount === 1) {
+                updateStatus(`🎉 Found the answer! The hidden card is: <strong>${remainingCards[0].name}</strong>`);
+                document.getElementById('remainingCards').style.display = 'none';
+                document.getElementById('suggestionBox').style.display = 'none';
+            } else {
+                updateStatus(`Turn ${turn} - ${remainingCount} possible cards remaining`);
+                displayRemainingCards();
+                calculateNextBestGuess();
+            }
+        }
+
+        function displayRemainingCards() {
+            const remainingCardsDiv = document.getElementById('remainingCards');
+            const cardList = document.getElementById('cardList');
+            const remainingCount = document.getElementById('remainingCount');
+            
+            remainingCount.textContent = remainingCards.length;
+            
+            if (remainingCards.length <= 20) {
+                cardList.innerHTML = remainingCards.map(card => `
+                    <div class="card-item">
+                        <div class="card-name">${card.name}</div>
+                        <div class="card-details">
+                            Lvl: ${card.level} | Attr: ${card.attribute} | Type: ${card.type} | 
+                            CT: ${card.cardTypes.length > 0 ? card.cardTypes.join(', ') : 'None'} | 
+                            ATK: ${card.atk} | DEF: ${card.defVal} | Year: ${card.releaseDate.getFullYear()}
+                        </div>
+                    </div>
+                `).join('');
+                remainingCardsDiv.style.display = 'block';
+            } else {
+                remainingCardsDiv.style.display = 'none';
+            }
+        }
+
+        function calculateNextBestGuess() {
+            if (remainingCards.length <= 1) {
+                document.getElementById('suggestionBox').style.display = 'none';
+                return;
+            }
+
+            showLoading(true);
+            
+            // Use setTimeout to allow UI to update before heavy calculation
+            setTimeout(() => {
+                let bestGuess = null;
+                let minAvgRemaining = Infinity;
+
+                // Get current known values for consistency check
+                const currentKnownValues = {};
+                if (remainingCards.length > 0) {
+                    const sampleCard = remainingCards[0];
+                    if (knownGreenAttributes['Attribute']) currentKnownValues.attribute = sampleCard.attribute;
+                    if (knownGreenAttributes['Level']) currentKnownValues.level = sampleCard.level;
+                    if (knownGreenAttributes['Type']) currentKnownValues.type = sampleCard.type;
+                    if (knownGreenAttributes['ATK']) currentKnownValues.atk = sampleCard.atk;
+                    if (knownGreenAttributes['DEF']) currentKnownValues.defVal = sampleCard.defVal;
+                    if (knownGreenAttributes['Release Date']) currentKnownValues.releaseDate = sampleCard.releaseDate.getFullYear();
+                }
+
+                for (const guessCard of remainingCards) {
+                    // Check if guess card is consistent with known green attributes
+                    let isGuessConsistent = true;
+                    
+                    if (knownGreenAttributes['Attribute'] && guessCard.attribute !== currentKnownValues.attribute) {
+                        isGuessConsistent = false;
+                    }
+                    if (knownGreenAttributes['Level'] && guessCard.level !== currentKnownValues.level) {
+                        isGuessConsistent = false;
+                    }
+                    if (knownGreenAttributes['Type'] && guessCard.type !== currentKnownValues.type) {
+                        isGuessConsistent = false;
+                    }
+                    if (knownGreenAttributes['ATK'] && guessCard.atk !== currentKnownValues.atk) {
+                        isGuessConsistent = false;
+                    }
+                    if (knownGreenAttributes['DEF'] && guessCard.defVal !== currentKnownValues.defVal) {
+                        isGuessConsistent = false;
+                    }
+                    if (knownGreenAttributes['Release Date'] && guessCard.releaseDate.getFullYear() !== currentKnownValues.releaseDate) {
+                        isGuessConsistent = false;
+                    }
+                    
+                    // Apply individual card type constraints
+                    if (isGuessConsistent) {
+                        for (const [specificType, status] of Object.entries(knownIndividualCardTypes)) {
+                            if (status === 'g' && !guessCard.cardTypes.includes(specificType)) {
+                                isGuessConsistent = false;
+                                break;
+                            }
+                            if (status === 'r' && guessCard.cardTypes.includes(specificType)) {
+                                isGuessConsistent = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!isGuessConsistent) continue;
+
+                    // Calculate feedback groups for this guess
+                    const feedbackGroups = new Map();
+                    
+                    for (const hiddenCard of remainingCards) {
+                        const feedback = guessCard.compareTo(hiddenCard);
+                        const feedbackKey = `${feedback.attribute.status}-${feedback.attribute.arrow || 'null'}-` +
+                                          `${feedback.level.status}-${feedback.level.arrow || 'null'}-` +
+                                          `${feedback.type.status}-${feedback.type.arrow || 'null'}-` +
+                                          `${feedback.atk.status}-${feedback.atk.arrow || 'null'}-` +
+                                          `${feedback.defVal.status}-${feedback.defVal.arrow || 'null'}-` +
+                                          `${feedback.releaseDate.status}-${feedback.releaseDate.arrow || 'null'}`;
+                        
+                        feedbackGroups.set(feedbackKey, (feedbackGroups.get(feedbackKey) || 0) + 1);
+                    }
+
+                    // Calculate expected remaining cards
+                    const sumOfSquares = Array.from(feedbackGroups.values())
+                        .reduce((sum, count) => sum + count * count, 0);
+                    const avgRemaining = sumOfSquares / remainingCards.length;
+
+                    if (avgRemaining < minAvgRemaining) {
+                        minAvgRemaining = avgRemaining;
+                        bestGuess = guessCard.name;
+                    }
+                }
+
+                showLoading(false);
+
+                if (bestGuess) {
+                    const suggestionBox = document.getElementById('suggestionBox');
+                    const suggestionText = document.getElementById('suggestionText');
+                    
+                    suggestionText.innerHTML = `
+                        <strong>${bestGuess}</strong><br>
+                        <small>Expected average remaining: ${minAvgRemaining.toFixed(2)} cards</small>
+                    `;
+                    suggestionBox.style.display = 'block';
+                    
+                    // Pre-fill the suggestion in search box
+                    document.getElementById('cardSearch').value = bestGuess;
+                    currentGuess = allCards.find(card => card.name === bestGuess);
+                    document.getElementById('submitGuess').disabled = false;
+                } else {
+                    document.getElementById('suggestionBox').style.display = 'none';
+                }
+            }, 100);
+        }
+
+        // Utility function to get a good initial guess
+        function getInitialGuess() {
+            // Look for "Doggy Diver" as mentioned in the original code
+            const doggyDiver = allCards.find(card => card.name === "Doggy Diver");
+            if (doggyDiver) {
+                return doggyDiver.name;
+            }
+            
+            // If not found, calculate the best initial guess
+            // For performance, we'll just return a reasonable default or calculate for a subset
+            if (allCards.length > 0) {
+                return allCards[Math.floor(Math.random() * Math.min(100, allCards.length))].name;
+            }
+            
+            return null;
+        }
+
+        // Auto-suggest initial guess on load
+        function suggestInitialGuess() {
+            if (turn === 1 && remainingCards.length === allCards.length) {
+                const initialGuess = getInitialGuess();
+                if (initialGuess) {
+                    const suggestionBox = document.getElementById('suggestionBox');
+                    const suggestionText = document.getElementById('suggestionText');
+                    
+                    suggestionText.innerHTML = `
+                        <strong>${initialGuess}</strong><br>
+                        <small>Recommended starting card</small>
+                    `;
+                    suggestionBox.style.display = 'block';
+                    
+                    // Pre-fill the suggestion
+                    document.getElementById('cardSearch').value = initialGuess;
+                    currentGuess = allCards.find(card => card.name === initialGuess);
+                    document.getElementById('submitGuess').disabled = false;
+                }
+            }
+        }
+
+        // Initialize the app when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeApp();
+            if (allCards.length > 0) {
+                suggestInitialGuess();
+            }
+        });
+
+        // Make functions globally available for onclick handlers
+        window.selectCard = selectCard;
+        window.setFeedback = setFeedback;
+        window.setCardTypeFeedback = setCardTypeFeedback;
+    </script>
+</body>
+</html>
