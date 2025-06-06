@@ -921,12 +921,17 @@
                         }
                     }
                     // If any type is 'g', all other types must not be present, but only if the candidate card has exactly 1 type
-                    if (Object.values(knownIndividualCardTypes).includes('g') && candidateCard.cardTypes.length === 1) {
-                        for (const type of candidateCard.cardTypes) {
-                            if (knownIndividualCardTypes[type] !== 'g') {
-                                overallMatch = false;
-                                break;
+                    if (Object.values(knownIndividualCardTypes).includes('g')) {
+                        if (candidateCard.cardTypes.length === 1) {
+                            for (const type of candidateCard.cardTypes) {
+                                if (knownIndividualCardTypes[type] !== 'g') {
+                                    overallMatch = false;
+                                    break;
+                                }
                             }
+                        } else if (candidateCard.cardTypes.length > 1) {
+                            // Discard cards with more than one type
+                            overallMatch = false;
                         }
                     }
                     // If any type is 'o', discard cards that have only that type (length 1)
