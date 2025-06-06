@@ -347,6 +347,136 @@
             margin-bottom: 0;
         }
 
+        .past-guesses {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-top: 30px;
+        }
+        /* --- Ygordle-style guess card for past guesses --- */
+        .guess-card {
+            background-color: #f0f0f0;
+            line-height: normal;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 10px 0 0 0;
+        }
+        .guess-card .properties {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+        }
+        .guess-card .property,
+        .guess-card .property-group {
+            align-self: stretch;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 5px;
+            background-color: #8b0000;
+            color: #eee;
+            margin: 0;
+            min-width: 36px;
+        }
+        .guess-card .property.neutral,
+        .guess-card .property-group.neutral {
+            background-color: transparent;
+            color: #000;
+            padding: 0;
+        }
+        .guess-card .property.correct,
+        .guess-card .property-group.correct {
+            background-color: green;
+            color: #fff;
+        }
+        .guess-card .property.correct.missing,
+        .guess-card .property-group.correct.missing {
+            background-color: #cc7000;
+        }
+        .guess-card .property .label,
+        .guess-card .property-group .label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+            font-size: 8px;
+        }
+        .guess-card .property.attribute,
+        .guess-card .property-group.attribute {
+            flex-grow: 0;
+            width: 70px;
+        }
+        .guess-card .property.level,
+        .guess-card .property-group.level {
+            flex-grow: 0;
+            width: 40px;
+        }
+        .guess-card .property.race,
+        .guess-card .property-group.race,
+        .guess-card .property.type,
+        .guess-card .property-group.type {
+            flex-grow: 1;
+        }
+        .guess-card .property.atk,
+        .guess-card .property-group.atk,
+        .guess-card .property.def,
+        .guess-card .property-group.def,
+        .guess-card .property.year,
+        .guess-card .property-group.year {
+            flex-grow: 0;
+            width: 60px;
+        }
+        .guess-card .property.image {
+            flex-grow: 0;
+            width: 60px;
+            background: none;
+            padding: 0;
+        }
+        .guess-card .past-guess-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f3f3f3;
+            border: 1px solid #ddd;
+        }
+        .guess-card .past-guess-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+            color: #333;
+            text-align: center;
+        }
+        .guess-card .property.type-type {
+            background: #444;
+            color: #fff;
+            padding: 2px 7px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+        }
+        .guess-card .property.type-type.green {
+            background: green;
+        }
+        .guess-card .property.type-type.orange {
+            background: #cc7000;
+        }
+        .guess-card .property.type-type.red {
+            background: #8b0000;;
+        }
+        .guess-card .property.type-type.neutral {
+            background: #eee;
+            color: #333;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -400,6 +530,9 @@
             </div>
         </div>
 
+        <!-- Past Guesses List -->
+        <div class="past-guesses" id="pastGuessesContainer" style="margin-top: 30px;"></div>
+
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>Loading card database...</p>
@@ -438,6 +571,7 @@
         let knownIndividualCardTypes = {};
         let currentGuess = null;
         let turn = 1;
+        let pastGuesses = [];
 
         // Card comparison classes (JavaScript equivalents)
         class CardComparisonResult {
@@ -476,7 +610,7 @@
         // Card class
         class Card {
             constructor(data) {
-                this._id = data._id;
+                this.id = data.id;
                 this.name = data.name;
                 this.attribute = data.attribute;
                 this.level = data.level;
@@ -589,12 +723,10 @@
                 currentGuess = null;
                 return;
             }
-            console.log(query)
 
             const matches = allCards.filter(card => 
                 typeof card.name === 'string' && card.name.toLowerCase().includes(query)
             ).slice(0, 10);
-            console.log(matches)
 
             if (matches.length === 0) {
                 suggestions.style.display = 'none';
@@ -867,6 +999,10 @@
                 }
             }
 
+            // Save guess and feedback
+            pastGuesses.push({ card: currentGuess, feedback: JSON.parse(JSON.stringify(feedback)), cardTypes: { ...knownIndividualCardTypes } });
+            renderPastGuesses();
+
             // Apply feedback and filter cards
             filterRemainingCards(feedback);
             
@@ -880,7 +1016,7 @@
             turn++;
             updateDisplay();
         }
-
+        
         function filterRemainingCards(userFeedback) {
             const nextPossibleCards = [];
             
@@ -929,7 +1065,7 @@
                                     break;
                                 }
                             }
-                        } else if (candidateCard.cardTypes.length > 1) {
+                        } else if (candidateCard.cardTypes.length > 1 && currentGuess.cardTypes.length == 1) {
                             // Discard cards with more than one type
                             overallMatch = false;
                         }
@@ -1145,12 +1281,96 @@
             }
         }
 
+
+        // Render past guesses visually rich (Ygordle style)
+        function renderPastGuesses() {
+            const container = document.getElementById('pastGuessesContainer');
+            if (!pastGuesses.length) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = '<h3>Past Guesses</h3>' + pastGuesses.map(entry => {
+                const card = entry.card;
+                const feedback = entry.feedback;
+                const cardTypesFeedback = entry.cardTypes || {};
+                const imgUrl = card.id ? `https://r2.spellbook.life/art/${card.id}.webp` : 'https://via.placeholder.com/60x60?text=No+Image';
+                function iconFor(fb) {
+                    if (!fb) return '';
+                    if (fb.status === 'green') return '<span style="color:#28a745;font-weight:bold;">✓</span>';
+                    if (fb.status === 'red' && fb.arrow === 'up') return '<span title="Higher" style="color:#007bff;">↑</span>';
+                    if (fb.status === 'red' && fb.arrow === 'down') return '<span title="Lower" style="color:#ff9800;">↓</span>';
+                    if (fb.status === 'red') return '<span style="color:#dc3545;font-weight:bold;">✗</span>';
+                    return '';
+                }
+                // Card types feedback: each type as a separate element
+                let cardTypesHtml = '';
+                if (card.cardTypes && card.cardTypes.length) {
+                    cardTypesHtml = `<div class=\"property-group type neutral\" style=\"display:flex;gap:0;\">` +
+                        card.cardTypes.map(type => {
+                            let status = cardTypesFeedback[type];
+                            let cls = 'type-type';
+                            if (status === 'g') cls += ' green';
+                            else if (status === 'o') cls += ' orange';
+                            else if (status === 'r') cls += ' red';
+                            else cls += ' neutral';
+                            return `<div class=\"property ${cls}\">${type}</div>`;
+                        }).join('') +
+                        `</div>`;
+                }
+                // Helper for property class
+                function propClass(fb, base) {
+                    if (fb && fb.status === 'green') return base + ' correct';
+                    if (fb && fb.status === 'red') return base + ' incorrect';
+                    return base + ' neutral';
+                }
+                return `
+                <div class=\"guess-card\">
+                    <div class=\"past-guess-name\">${card.name}</div>
+                    <div class=\"properties\">
+                        <div class=\"property image\"><img class=\"past-guess-image\" src=\"${imgUrl}\" alt=\"${card.name}\"></div>
+                        <div class=\"property attribute ${feedback.attribute && feedback.attribute.status === 'green' ? 'correct' : feedback.attribute && feedback.attribute.status === 'red' ? 'incorrect' : 'neutral'}\">
+                            ${card.attribute ? card.attribute.toUpperCase() : ''}
+                            ${iconFor(feedback.attribute)}
+                            <span class=\"label\">Attr</span>
+                        </div>
+                        <div class=\"property level ${feedback.level && feedback.level.status === 'green' ? 'correct' : feedback.level && feedback.level.status === 'red' ? 'incorrect' : 'neutral'}\">
+                            ${iconFor(feedback.level)}
+                            ${card.level}
+                            <span class=\"label\">Lvl</span>
+                        </div>
+                        <div class=\"property race ${feedback.type && feedback.type.status === 'green' ? 'correct' : feedback.type && feedback.type.status === 'red' ? 'incorrect' : 'neutral'}\">
+                            ${card.type}
+                            <span class=\"label\">Race</span>
+                        </div>
+                        ${cardTypesHtml}
+                        <div class=\"property atk ${feedback.atk && feedback.atk.status === 'green' ? 'correct' : feedback.atk && feedback.atk.status === 'red' ? 'incorrect' : 'neutral'}\">
+                            ${iconFor(feedback.atk)}
+                            ${card.atk}
+                            <span class=\"label\">ATK</span>
+                        </div>
+                        <div class=\"property def ${feedback.def && feedback.def.status === 'green' ? 'correct' : feedback.def && feedback.def.status === 'red' ? 'incorrect' : 'neutral'}\">
+                            ${iconFor(feedback.def)}
+                            ${card.def}
+                            <span class=\"label\">DEF</span>
+                        </div>
+                        <div class=\"property year ${feedback.release && feedback.release.status === 'green' ? 'correct' : feedback.release && feedback.release.status === 'red' ? 'incorrect' : 'neutral'}\">
+                            ${iconFor(feedback.release)}
+                            ${card.releaseDate.getFullYear()}
+                            <span class=\"label\">Year</span>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
         // Initialize the app when page loads
         document.addEventListener('DOMContentLoaded', async () => {
             await initializeApp();
             if (allCards.length > 0) {
                 suggestInitialGuess();
             }
+            renderPastGuesses();
         });
 
         // Make functions globally available for onclick handlers
